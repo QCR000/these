@@ -89,7 +89,7 @@
 
 \begin{document}
 
-\maketitle
+\maketitle{}
 
 
 \section{引言}
@@ -138,7 +138,6 @@
 % 12）图应为矢量图。
 % 13）表中表头文字采用中文。
 % 14）公式尺寸：
-% 标准：10.5磅
 % 下标/上标：5.8磅
 % 次下标/上标：4.5磅
 % 符号：16磅
@@ -155,25 +154,60 @@
   \subsection{智能汽车模型}
   \paragraph{}对于一排汽车(如fig.1)的首量汽车,其动力学方程可以表示\:
   \begin{equation} \dot{x}_0(t)=v_0(t),\quad \dot{v}_0(t)=a_0(t) \end{equation}
-  式中:$x_0(t)$为初始位置,$\v_0(t)$和$\v_0(t)$是速度和加速度,$a_0(t)$下面给出;
-  \paragraph{}汽车$k$可以用如下三层非线性模型表示:
-  
+  式中:$x_0(t)$为初始位置,$v_0(t)$和$a_0(t)$是速度和加速度,$a_0(t)$下面给出;
+  \paragraph{}汽车$k$可以用如下三层非线性模型表示\:
   \begin{eqnarray}
     &\dot{x}_K(t) &= v_i(t) \nonumber \\
     &\dot{v}_K(t) &= a_i(t) \nonumber \\
-    &\dot{a}_k(t) &=-\frac{1}{\tau_k}(a_i+\frac{\upsilon A_k C_{dk}}{2m_k} v_i(t)^2+\frac{dm_k}{m_k}) \nonumber \\
+    &\dot{a}_k(t) &=-\frac{1}{\tau_k}(a_i+\frac{\upsilon A_k C_{dk}}{2m_k} v_i(t)^2+\frac{t_{mk}}{m_k}) \nonumber \\
     &&\quad  -\frac{\upsilon A_k C_{dk} v_k(t) a_k}{m_k} + \frac{e_k(t)}{\tau_k m_k}+d_k(t)    
   \end{eqnarray}
-  式中:$e_k (t)$是引擎/刹车的输入,$\tau _k$是引擎持续时间,$\upsilon$ 为空气比重,$m_k,A_k,C_{dk}$分别指的是第k辆车的质量,横截面阻尼系数,
+  式中:$e_k (t)$是引擎/刹车的输入,$\tau _k$是引擎持续时间,$\upsilon$ 为空气比重,$m_k,A_k,C_{dk},t_{mk}$分别指的是第k辆车的质量,横截面阻尼系数,
   机械阻力,$\frac{\upsilon A_k C_{dk}}{2m_k}$指的是空气阻力,$d_k$代表由阵风或者路面情况而造成的额外干扰.\\
   令
   \begin{eqnarray}
     u_i &=& \frac{c_k(t)}{m_k} \nonumber \\
-    f_i(v_k,a_k,t) &=& -\frac{1}{\tau _k}(a_i+\frac{\upsilon A_k C_{dk}}{2m_k} v_i(t)^2+\frac{dm_k}{m_k}) \nonumber \\
+    f_k(v_k,a_k,t) &=& -\frac{1}{\tau _k}(a_i+\frac{\upsilon A_k C_{dk}}{2m_k} v_i(t)^2+\frac{e_{mk}}{m_k}) \nonumber \\
     &&\quad -\frac{\upsilon A_k C_{dk} v_k(t) a_k}{m_k}
     \end{eqnarray}
+    将()带入()中，可得\:
+    \begin{eqnarray}
+      \dot{x}_k(t) &=& v_i(t) \nonumber \\
+      \dot{v}_k(t) &=& a_i(t) \nonumber \\
+      \dot{a}_K(t) &=& f_k(v_k,a_k,t) + \frac{u_k(t)}{\tau _K} + d_k(t)
+    \end{eqnarray}
+    在这里用$u_k(t)$来做输入，避免了汽车质量的影响。在现实当中机械阻力$t_{mk}$和空气阻尼$\frac{\upsilon A_k C_{dk}}{2m_k}$
+    是无法获取，所以非线性函数$f_k(v_k,a_k,t)$是未知的，可以REFNN逼近。
+    \paragraph{对{\color{red}制动器故障}中的误差和饱和特性建模}
+    在实际情况下，部分的功率损失和偏差是汽车制动器故障主要的主要来源。其中功率损失主要由于磨损而偏差指的是老化或者
+    外部压力是损耗。根据\[\],我们可采用如下模型\:
+    \begin{equation}
+      u_{ak} = \omega (t) u_k(t) + r_k(t) 
+    \end{equation}
+    其中$\omega (t)$指的是制动器的功效而$r_k(t)$值得是偏差。考虑到制动器故障来源以及制动器的饱和特性，可得\:
+    \begin{eqnarray}
+      &\dot{x}_k(t) =& v_i(t) \nonumber \\
+      &\dot{v}_k(t) =& a_i(t) \nonumber \\
+      &\dot{a}_k(t) =& f_k(v_k,a_k,t) \nonumber \\
+      &&+ \frac{\omega (t) sat(u_k(t)) + r_k(t)}{\tau _K} + d_k(t)
+    \end{eqnarray}
+    其中$sat(u_k(t))$代表非对称饱和特性，其表达式为\:
+    \begin{equation}
+      sat(u_k(t)) = 
+      \begin{cases}
+        u_{r,kmax}, & \mbox{if } u_k(t) > a_{r,k} \\
+        g_{r,k}(u_k(t)) &\mbox{if }  0\leq u_k(t) \leq a_{r,k}\\
+        g_{l,k}(u_k(t)) &\mbox{if } a_{l,k} \leq u_k(t) \leq 0\\
+        u_{l,kmin} &\mbox{if } u_k(t) < a_{l,k}
+      \end{cases}
+    \end{equation}
 
-
+    其中未知常数$u_{r,kmax} > 0 , u_{l,kmin} < 0$分别是制动器输出的上界和下界,$b_{r,k} > 0, b_{l,k}<0$是
+    制动器的振幅,$g_{r,k}(u_k(t)),g_{l.k}(u_k(t))$是未知的非线性函数。参考[],可得以下等式\:
+    \begin{equation}
+      sat(u_k) = \chi _{uk}(t) u_k(t)
+    \end{equation}
+    其中$\chi _uk(t)$
     \subsection{数学知识}
     \paragraph{假设1}
     误差的一阶导数,二阶导数存在，并且$|\dot{d}|<L_0,|\ddot{d}|<L_1$,其中$\dot{d}$的上确界$L_0$被假设
