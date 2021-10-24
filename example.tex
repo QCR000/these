@@ -152,18 +152,18 @@
 \section{模型和数学知识}
 
   \subsection{智能汽车模型}
-  \paragraph{}对于一排汽车(如fig.1)的首量汽车,其动力学方程可以表示\:
+  \paragraph{}对于一排智能汽车(如fig.1)的首辆汽车,其动力学方程可以表示\:
   \begin{equation} \dot{x}_0(t)=v_0(t),\quad \dot{v}_0(t)=a_0(t) \end{equation}
-  式中:$x_0(t)$为初始位置,$v_0(t)$和$a_0(t)$是速度和加速度,$a_0(t)$下面给出;
-  \paragraph{}汽车$k$可以用如下三层非线性模型表示\:
+  式中:$x_0(t)$为初始位置,$v_0(t)$和$a_0(t)$是速度和加速度,$a_0(t)$下面给出
+  汽车$k$可以用如下三层非线性模型表示\:
   \begin{eqnarray}
     &\dot{x}_K(t) &= v_i(t) \nonumber \\
     &\dot{v}_K(t) &= a_i(t) \nonumber \\
     &\dot{a}_k(t) &=-\frac{1}{\tau_k}(a_i+\frac{\upsilon A_k C_{dk}}{2m_k} v_i(t)^2+\frac{t_{mk}}{m_k}) \nonumber \\
-    &&\quad  -\frac{\upsilon A_k C_{dk} v_k(t) a_k}{m_k} + \frac{e_k(t)}{\tau_k m_k}+d_k(t)    
+    &&\quad  -\frac{\upsilon A_k C_{dk} v_k(t) a_k}{m_k} + \frac{e_k(t)}{\tau_k m_k}+\epsilon _k(t)    
   \end{eqnarray}
   式中:$e_k (t)$是引擎/刹车的输入,$\tau _k$是引擎持续时间,$\upsilon$ 为空气比重,$m_k,A_k,C_{dk},t_{mk}$分别指的是第k辆车的质量,横截面阻尼系数,
-  机械阻力,$\frac{\upsilon A_k C_{dk}}{2m_k}$指的是空气阻力,$d_k$代表由阵风或者路面情况而造成的额外干扰.\\
+  机械阻力,$\frac{\upsilon A_k C_{dk}}{2m_k}$指的是空气阻力,$\epsilon _k$代表由阵风或者路面情况而造成的额外干扰。\\
   令
   \begin{eqnarray}
     u_i &=& \frac{c_k(t)}{m_k} \nonumber \\
@@ -174,13 +174,13 @@
     \begin{eqnarray}
       \dot{x}_k(t) &=& v_i(t) \nonumber \\
       \dot{v}_k(t) &=& a_i(t) \nonumber \\
-      \dot{a}_K(t) &=& f_k(v_k,a_k,t) + \frac{u_k(t)}{\tau _K} + d_k(t)
+      \dot{a}_K(t) &=& f_k(v_k,a_k,t) + \frac{u_k(t)}{\tau _K} + \epsilon _k(t)
     \end{eqnarray}
     在这里用$u_k(t)$来做输入，避免了汽车质量的影响。在现实当中机械阻力$t_{mk}$和空气阻尼$\frac{\upsilon A_k C_{dk}}{2m_k}$
     是无法获取，所以非线性函数$f_k(v_k,a_k,t)$是未知的，可以REFNN逼近。
     \paragraph{对{\color{red}制动器故障}中的误差和饱和特性建模}
     在实际情况下，部分的功率损失和偏差是汽车制动器故障主要的主要来源。其中功率损失主要由于磨损而偏差指的是老化或者
-    外部压力是损耗。根据\[\],我们可采用如下模型\:
+    外部压力是损耗。根据[],我们可采用如下模型\:
     \begin{equation}
       u_{ak} = \omega (t) u_k(t) + r_k(t) 
     \end{equation}
@@ -188,8 +188,7 @@
     \begin{eqnarray}
       &\dot{x}_k(t) =& v_i(t) \nonumber \\
       &\dot{v}_k(t) =& a_i(t) \nonumber \\
-      &\dot{a}_k(t) =& f_k(v_k,a_k,t) \nonumber \\
-      &&+ \frac{\omega (t) sat(u_k(t)) + r_k(t)}{\tau _K} + d_k(t)
+      &\dot{a}_k(t) =& f_k(v_k,a_k) \nonumber + \frac{\omega (t) sat(u_k(t)) + r_k(t)}{\tau _k} + \epsilon _k(t)
     \end{eqnarray}
     其中$sat(u_k(t))$代表非对称饱和特性，其表达式为\:
     \begin{equation}
@@ -207,16 +206,45 @@
     \begin{equation}
       sat(u_k) = \chi _{uk}(t) u_k(t)
     \end{equation}
-    其中$\chi _uk(t)$
+    其中$\chi _{uk}(t)$为饱和度指标函数。存在$\chi _k$满足\:
+    \begin{equation}
+      0 < \chi _k \leq < 1
+    \end{equation}
+    当$\chi _{uk}$接近于零时，输入完全饱和，$\chi _{uk}$指的是完全不饱和。第K辆车的动态方程可以进一步写为\:
+    \begin{eqnarray}
+      &\dot{x}_k(t) =& v_i(t) \nonumber \\
+      &\dot{v}_k(t) =& a_i(t) \nonumber \\
+      &\dot{a}_k(t) =& f_k(v_k,a_k) \nonumber + \frac{\chi _{uk}\omega (t) u_k(t) }{\tau _k} + \epsilon _k(t) + \frac{r_k(t)}{\tau _k} \nonumber \\
+    \end{eqnarray}
+    令干扰$d_k(t) = \epsilon (t) + \frac{r_K(t)}{\tau _K}$。
+    \paragraph{假设1}制动器的功效$\omega (t)$，制动器的偏差$\r_k(t)$和由阵风或者路面情况而造成的额外干扰$\epsilon _k$
+    都是未知函数，并且存在正数$\omega_{k0}$和$L_0$满足$<\omega _{k0} \ge\omega _K(t) \ge 1$，$d_K(t) < L_0 <\infty$。
+    \paragraph{假设2}干扰的一阶导数,二阶导数存在，并且$|\dot{d}|<L_1,|\ddot{d}|<L_2$,其中$\dot{d}$的上确界$L_1$被假设
+    未知，但是$\ddot{d}$的上确界是已知的,并且$L_1,L_2$是有限的。
+    \paragraph{注}制动器的故障和饱和特性没有被解决，下一部分将会设计故障允许控制器完成对它们的控制。不过由于控制器有较长的训练时间，
+    所以这个方法不能用于处理密集的交通情况下。
+
+    
+
+
+
     \subsection{数学知识}
-    \paragraph{假设1}
-    误差的一阶导数,二阶导数存在，并且$|\dot{d}|<L_0,|\ddot{d}|<L_1$,其中$\dot{d}$的上确界$L_0$被假设
-    未知，但是$\ddot{d}$的上确界是已知的,并且$L_0,L_1$是有限的。
+
     
     \paragraph{引理1}
+    由于RBFNNs本身的逼近能力，用它来估计未知的非线性函数。任何的连续函数$f(Z)$可以被替代为\:
+    \begin{equation}
+      f(Z) = W^{*T} \pi(Z) + \zeta 
+    \end{equation}
+    其中Z是输入向量，$W^* = {[\omega_1, \omega_2, ... ,\omega_n ]}^T$是n个神经元理想权重，\zeta 为逼近误差，
+    $\pi(Z) = [\pi _1(Z),\pi_2 (Z),...,\pi(Z)]^T$是高斯基向量函数。可以表示为\:
+    \begin{equation}
+      \pi _K(Z) = \mathcal{exp}[-\frac{{(Z-C_k)}^T(Z-C_k)}{2{b_k}^2}], \quad k = 1,2 ,..., n
+    \end{equation}
+    其中$b_k$是高斯函数的宽度，$C_k$是中心向量。
 
     \paragraph{引理2}
-    下面是一个一阶滑膜控制器的原型，对于这个系统存在以下的动态方程：
+    下面是一个一阶滑膜控制器的原型，对于这个系统存在以下的动态方程：  
     \begin{equation}
       \dot{s}_a(t) = a(t) + u_a(t)
     \end{equation}  
@@ -267,7 +295,7 @@
   设计$\upsilon_z$使我们设计的辅助变量$e$和干扰$d$的估计值$\hat{d}$在有限的时间内收敛到零。
 
 \subsubsection{定理1}
-  考虑如下滑模面$s_d$:
+  引入如下滑模面$s_d$:
   \begin{equation}
     s_d = \dot{e} + n_{1d} sgn(e) \left| e \right|^{\varTheta_{1n}} + n_{2d} sgn(e)\left|e\right|^{\varTheta_{2n}} 
   \end{equation}
@@ -283,7 +311,7 @@
   \paragraph*{证明}
     首先对$e$求导:
     \begin{equation}
-      \dot{e} = \dot{x}_n =  n_{1d} sgn(e) \left| e \right|^{\varTheta_{1n}} + n_{2d} sgn(e)\left|e\right|^{\varTheta_{2n}} 
+      \dot{e} = \dot{z}-\dot{x}_n =  n_{1d} sgn(e) \left| e \right|^{\varTheta_{1n}} + n_{2d} sgn(e)\left|e\right|^{\varTheta_{2n}} 
     \end{equation}
     将(9)带入(6)可\:
     \begin{equation}
@@ -339,9 +367,32 @@
     可以得到通过在式子()(){\color{red}二阶适应率}作用下，可以估计误差$d(t)$。
   \paragraph*{说明}
     由于在智能汽车模型中一般不能得到$x_n$，但是我们根据
+
   \subsection{滑膜控制器的设计}
-
-
+    这部分的目标是建立一个鲁棒性良好的滑模面控制方法，误差观测器也被用来去估计误差。\\
+    假设需要追踪的轨迹是$y_d(t)$，那么追踪误差可为$e_m = y(t) - y_d(t)$。首先，设计滑膜面为\:
+    \begin{equation}
+      s_c(t) = \int_{0}^{t} (\gamma_a{e_m}^\eta(t) + \gamma _z e_m(t)) \,dx
+      + e_m(t) + \dot{e}_m(t)
+    \end{equation}
+    其中$\eta > 0 ,\gamma _a > 0,\gamma _z >0 $。$\gamma_a,\gamma _z$是两个自适应参量，其表达式为\:
+    \begin{eqnarray*}
+      \gamma _a &=& \frac{m_a}{m_a + n_a \mathcal{exp}(-c_a|v_z(t)|)} \nonumber \\
+      \gamma _z &=& \frac{1}{1+\mathcal{exp}(-c_z|e_m(t)|)}\nonumber
+    \end{eqnarray*}
+    其中$m_a > 0,n_a >0 , c_a >0, c_z >0$。
+    \paragraph{}引进这两个自适应参数是为了减弱集中干扰并且提升系统的收敛性。当干扰增大时，干扰的估计值$v_z(t)$也增大，从而可以推出
+    $\gamma _a$占比上升，补偿干扰的影响。同理，当跟踪误差变大时，$\gamma _z $增加。因此系统的收敛性和鲁棒性都增加。
+    \paragraph{}联立()()可得\:
+    \begin{equation}
+      s_c(t) = \int_{0}^{t} (\gamma_a{e_m}^\eta(t) + \gamma _z e_m(t))  \,dx + e_m(t) 
+      + x_2(t) - \dot{y}(t)
+    \end{equation}
+    对上式求导可得\:
+    \begin{equation}
+      \dot{s}_c(t) = \gamma_a{e_m}^\eta(t) + \gamma _z e_m(t) + \dot{e}_m(t) + \dot{x}_2(t) - \ddot{y}(t)
+    \end{equation}
+    
   % \\
   % 推导过程:\\
   % 1.假设\\
